@@ -1,0 +1,3 @@
+<launch>
+    <node name="particle_simulation" pkg="particle_simulation" type="particle_visualization" output="screen"/>
+</launch>
