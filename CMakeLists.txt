@@ -16,6 +16,7 @@ find_package(Eigen3 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW REQUIRED glfw3)
 find_package(GLEW REQUIRED)
+find_package(GLUT REQUIRED)
 
 # OpenGL 정책 설정
 if(POLICY CMP0072)
@@ -39,10 +40,11 @@ include_directories(
   ${GLFW_INCLUDE_DIRS}
   ${GLEW_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  ${GLUT_INCLUDE_DIRS}
 )
 
 # 실행 파일 설정
-add_executable(particle_visualization src/main.cpp src/particle.cpp)
+add_executable(particle_visualization src/main.cpp src/particle.cpp src/particle_manager.cpp)
 
 # 라이브러리 링크
 target_link_libraries(particle_visualization
@@ -50,5 +52,6 @@ target_link_libraries(particle_visualization
   ${OPENGL_LIBRARIES}
   ${GLFW_LIBRARIES}
   ${GLEW_LIBRARIES}
+  ${GLUT_LIBRARIES} # Add GLUT libraries
   TBB::tbb
 )
