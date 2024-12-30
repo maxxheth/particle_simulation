@@ -10,14 +10,15 @@
 #include "particle_simulation/particle_manager.hpp"
 
 #define MIN_GEN_DT 0.01
+#define FRAME_DT 0.01
 
 // 마우스 클릭 상태와 위치를 저장할 변수
 bool b_mouse_pressed_ = false;
 double d_mouse_x_ = 0.0;
 double d_mouse_y_ = 0.0;
 
-double d_window_width_ = 1000.0;
-double d_window_height_ = 1000.0;
+double d_window_width_ = 800.0;
+double d_window_height_ = 800.0;
 
 double d_last_gen_time_ = 0.0;
 
@@ -76,7 +77,6 @@ void MouseButtonCallback(GLFWwindow* p_window, int button, int action, int mods)
 
         } else if (action == GLFW_RELEASE) {
             b_mouse_pressed_ = false;
-            // std::cout << "Mouse Released" << std::endl;
         }
     }
 }
@@ -84,7 +84,6 @@ void MouseButtonCallback(GLFWwindow* p_window, int button, int action, int mods)
 // 마우스 위치 콜백 함수
 void CursorPositionCallback(GLFWwindow* p_window, double xpos, double ypos) {
     if (b_mouse_pressed_) {
-        // std::cout << "Mouse Position: Updated (" << xpos << ", " << ypos << ")" << std::endl;
         d_mouse_x_ = xpos;
         d_mouse_y_ = ypos;
 
@@ -99,7 +98,7 @@ void CursorPositionCallback(GLFWwindow* p_window, double xpos, double ypos) {
 
 // 원 그리기 함수
 void DrawCircle(double x, double y, double radius) {
-    int i_segments = 100;
+    int i_segments = 10;
     glColor3f(1.0f, 1.0f, 1.0f);
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(x, y);
@@ -109,7 +108,6 @@ void DrawCircle(double x, double y, double radius) {
         double dy = radius * sin(angle);
         glVertex2f(x + dx, y + dy);
     }
-    // std::cout << "DrawCircle in " << x << ", " << y << std::endl;
     glEnd();
     
 }
@@ -170,6 +168,11 @@ int main(int argc, char** argv) {
 
     // Main loop
     while (ros::ok() && !glfwWindowShouldClose(p_window)) {
+
+        // Measure time taken by UpdateParticles
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -183,7 +186,7 @@ int main(int argc, char** argv) {
         auto update_start_time = std::chrono::high_resolution_clock::now();
         
         // Update particles
-        particle_manager_.UpdateParticles(0.1); // Assuming 60 FPS
+        particle_manager_.UpdateParticles(FRAME_DT); // Assuming 60 FPS
         
         auto update_end_time = std::chrono::high_resolution_clock::now();
         auto update_duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(update_end_time - update_start_time).count();
@@ -195,7 +198,7 @@ int main(int argc, char** argv) {
             auto [d_physics_x, d_physics_y] = pos;
             auto [d_window_x, d_window_y] = PhysicsToWindowCoords(d_physics_x, d_physics_y);
             auto [d_opengl_x, d_opengl_y] = WindowToOpenGLCoords(d_window_x, d_window_y);
-            DrawCircle(d_opengl_x, d_opengl_y, 0.05); // Draw each particle as a small circle
+            DrawCircle(d_opengl_x, d_opengl_y, PARTICLE_RADIUS/d_window_width_ * 2.0); // Draw each particle as a small circle
         }
 
         auto draw_end_time = std::chrono::high_resolution_clock::now();
@@ -221,8 +224,10 @@ int main(int argc, char** argv) {
         // Poll for and process events (e.g., keyboard, mouse)
         glfwPollEvents();
 
-        // ROS callback
-        ros::spinOnce();
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end_time - start_time).count();
+        std::cout << "Total time: " << duration << " ms" << std::endl;
+
     }
 
     // Clean up

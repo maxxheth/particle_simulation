@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 
 #define GRAVITY 9.8
+#define PARTICLE_RADIUS 5.0
 
 class Particle {
 public:
@@ -20,18 +21,17 @@ public:
 
     double x() const { return d_x_; }
     double y() const { return d_y_; }
+    double vx() const { return d_vx_; }
+    double vy() const { return d_vy_; }
     int id() const { return id_; }
+    
     void SetPosition(double d_x, double d_y);
 
     // Set the velocity of the particle
     void SetVelocity(double d_velocity_x, double d_velocity_y);
 
-    // Get the velocity of the particle
-    double GetVelocityX() const;
-    double GetVelocityY() const;
 
-    // Get the radius of the particle
-    double GetRadius() const;
+
 
 private:
     double d_x_;  // X position
@@ -40,7 +40,6 @@ private:
     double d_vy_; // Y velocity
     double d_ax_; // X acceleration
     double d_ay_; // Y acceleration
-    double d_radius_ = 2.0; // Example radius
     int id_;
 };
 #endif // PARTICLE_SIMULATION_PARTICLE_HPP

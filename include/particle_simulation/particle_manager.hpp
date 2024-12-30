@@ -22,7 +22,7 @@ private:
     void AssignParticlesToGrid();
 
     std::vector<Particle> particles_; // List of particles
-    double grid_cell_size_ = 5.0; // Example cell size
+    double grid_cell_size_ = PARTICLE_RADIUS * 2.0; // Example cell size
     int grid_width_, grid_height_;
     std::vector<std::vector<std::vector<int>>> grid_; // 3D vector: [grid_y][grid_x][particle_indices]
 

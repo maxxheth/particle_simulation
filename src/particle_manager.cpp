@@ -37,7 +37,6 @@ void ParticleManager::AssignParticlesToGrid() {
     for (int i = 0; i < particles_.size(); ++i) {
         const auto& p = particles_[i];
         auto [grid_x, grid_y] = GetGridIndex(p.x(), p.y());
-        std::cout << "Particle " << p.id() << " is in grid cell (" << grid_x << ", " << grid_y << ")" << std::endl;
         if (grid_x >= 0 && grid_x < grid_width_ && grid_y >= 0 && grid_y < grid_height_) {
             grid_[grid_y][grid_x].push_back(i);
         }
@@ -47,11 +46,10 @@ void ParticleManager::AssignParticlesToGrid() {
 // Update all particles
 void ParticleManager::UpdateParticles(double d_time_step) {
     AssignParticlesToGrid();
-    for (auto& particle : particles_) {
-        particle.Update(d_time_step);
+    for (auto& p1 : particles_) {
+        p1.Update(d_time_step);
 
-
-        auto [grid_x, grid_y] = GetGridIndex(particle.x(), particle.y());
+        auto [grid_x, grid_y] = GetGridIndex(p1.x(), p1.y());
 
         // Check this cell and adjacent cells
         for (int dy = -1; dy <= 1; ++dy) {
@@ -64,58 +62,65 @@ void ParticleManager::UpdateParticles(double d_time_step) {
                         auto& p2 = particles_[j];
 
                         // Skip self
-                        if (particle.id() == p2.id()) continue;
+                        if (p1.id() == p2.id()) continue;
 
-                        double dx = p2.x() - particle.x();
-                        double dy = p2.y() - particle.y();
+                        double dx = p2.x() - p1.x();
+                        double dy = p2.y() - p1.y();
                         double distance = std::sqrt(dx * dx + dy * dy);
-                        double min_distance = particle.GetRadius() + p2.GetRadius();
+                        double min_distance = PARTICLE_RADIUS * 2.0;
 
                         if (distance < min_distance) {
-                            std::cout << "Collision detected between particle " << particle.id() << " and particle " << p2.id() << std::endl;
                             // Handle collision response
                             double nx = dx / distance;
                             double ny = dy / distance;
-                            double relative_velocity = (p2.GetVelocityX() - particle.GetVelocityX()) * nx + (p2.GetVelocityY() - particle.GetVelocityY()) * ny;
+                            double relative_velocity = (p2.vx() - p1.vx()) * nx + 
+                                                        (p2.vy() - p1.vy()) * ny;
 
                             if (relative_velocity < 0) {
-                                double impulse = 2 * relative_velocity / (1 + 1); // Assuming equal mass
-                                particle.SetVelocity(particle.GetVelocityX() - impulse * nx,
-                                                    particle.GetVelocityY() - impulse * ny);
-                                p2.SetVelocity(p2.GetVelocityX() + impulse * nx,  
-                                                p2.GetVelocityY() + impulse * ny);
+                                double impulse = 2 * relative_velocity / (1 + 1);  // Assuming equal mass
+                                p1.SetVelocity(p1.vx() + impulse * nx,
+                                               p1.vy() + impulse * ny);
+                                p2.SetVelocity(p2.vx() - impulse * nx,  
+                                               p2.vy() - impulse * ny);
                             }
+
+                            // Adjust positions to prevent overlap
+                            double overlap = min_distance - distance;
+                            double correction_factor = 0.5; // Adjust this factor as needed
+                            p1.SetPosition(p1.x() - overlap * nx * correction_factor,
+                                           p1.y() - overlap * ny * correction_factor);
+                            p2.SetPosition(p2.x() + overlap * nx * correction_factor,
+                                           p2.y() + overlap * ny * correction_factor);
                         }
                     }
                 }
             }
         }
 
-
         // Get the updated position
         double d_position_x, d_position_y;
-        particle.GetPosition(d_position_x, d_position_y);
+        p1.GetPosition(d_position_x, d_position_y);
 
         // Check for boundary collision and reverse velocity if needed
-        if (d_position_x < d_min_x_) {
-            d_position_x = d_min_x_;
-            particle.SetVelocity(-particle.GetVelocityX() * DAMPING_FACTOR, particle.GetVelocityY());
+        if (d_position_x < d_min_x_ + PARTICLE_RADIUS) {
+            d_position_x = d_min_x_ + PARTICLE_RADIUS;
+            p1.SetVelocity(-p1.vx() * DAMPING_FACTOR, p1.vy());
         }
-        if (d_position_x > d_max_x_) {
-            d_position_x = d_max_x_;
-            particle.SetVelocity(-particle.GetVelocityX() * DAMPING_FACTOR, particle.GetVelocityY());
+        if (d_position_x > d_max_x_ - PARTICLE_RADIUS) {
+            d_position_x = d_max_x_ - PARTICLE_RADIUS;
+            p1.SetVelocity(-p1.vx() * DAMPING_FACTOR, p1.vy());
         }
-        if (d_position_y < d_min_y_) {
-            d_position_y = d_min_y_;
-            particle.SetVelocity(particle.GetVelocityX(), -particle.GetVelocityY() * DAMPING_FACTOR);
+        if (d_position_y < d_min_y_ + PARTICLE_RADIUS) {
+            d_position_y = d_min_y_ + PARTICLE_RADIUS;
+            p1.SetVelocity(p1.vx(), -p1.vy() * DAMPING_FACTOR);
         }
-        if (d_position_y > d_max_y_) {
-            d_position_y = d_max_y_;
-            particle.SetVelocity(particle.GetVelocityX(), -particle.GetVelocityY() * DAMPING_FACTOR);
+        if (d_position_y > d_max_y_ - PARTICLE_RADIUS) {
+            d_position_y = d_max_y_ - PARTICLE_RADIUS;
+            p1.SetVelocity(p1.vx(), -p1.vy() * DAMPING_FACTOR);
         }
 
         // Update the particle's position if it was out of bounds
-        particle.SetPosition(d_position_x, d_position_y);
+        p1.SetPosition(d_position_x, d_position_y);
     }
 }
 

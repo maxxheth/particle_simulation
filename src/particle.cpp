@@ -32,17 +32,3 @@ void Particle::SetVelocity(double d_velocity_x, double d_velocity_y) {
     d_vx_ = d_velocity_x;
     d_vy_ = d_velocity_y;
 }
-
-// Get the velocity of the particle
-double Particle::GetVelocityX() const {
-    return d_vx_;
-}
-
-double Particle::GetVelocityY() const {
-    return d_vy_;
-}
-
-// Get the radius of the particle
-double Particle::GetRadius() const {
-    return d_radius_;
-}
