@@ -28,31 +28,44 @@ ParticleManager particle_manager_;
 // OpenGL 좌표계는 좌하단이 0,0
 
 // Convert window coordinates to OpenGL coordinates
-std::pair<double, double> WindowToOpenGLCoords(double d_window_x, double d_window_y) {
+std::pair<double, double> WindowToOpenGLCoords(const double& d_window_x, const double& d_window_y) {
     double d_opengl_x = (d_window_x / d_window_width_) * 2.0 - 1.0;
     double d_opengl_y = 1.0 - (d_window_y / d_window_height_) * 2.0;
     return {d_opengl_x, d_opengl_y};
 }
 
 // Convert OpenGL coordinates to window coordinates
-std::pair<double, double> OpenGLToWindowCoords(double d_opengl_x, double d_opengl_y) {
+std::pair<double, double> OpenGLToWindowCoords(const double& d_opengl_x, const double& d_opengl_y) {
     double d_window_x = (d_opengl_x + 1.0) / 2.0 * d_window_width_;
     double d_window_y = (1.0 - d_opengl_y) / 2.0 * d_window_height_;
     return {d_window_x, d_window_y};
 }
 
 // Convert window coordinates to physics coordinates
-std::pair<double, double> WindowToPhysicsCoords(double d_window_x, double d_window_y) {
+std::pair<double, double> WindowToPhysicsCoords(const double& d_window_x, const double& d_window_y) {
     double d_physics_x = d_window_x;
     double d_physics_y = d_window_height_ - d_window_y;
     return {d_physics_x, d_physics_y};
 }
 
 // Convert physics coordinates to window coordinates
-std::pair<double, double> PhysicsToWindowCoords(double d_physics_x, double d_physics_y) {
+std::pair<double, double> PhysicsToWindowCoords(const double& d_physics_x, const double& d_physics_y) {
     double d_window_x = d_physics_x;
     double d_window_y = d_window_height_ - d_physics_y;
     return {d_window_x, d_window_y};
+}
+
+void AddParticleMouse() {
+    double current_time = ros::Time::now().toSec();
+    if (current_time - d_last_gen_time_ > MIN_GEN_DT) {
+        std::pair<double, double> d_physics_coords = WindowToPhysicsCoords(d_mouse_x_, d_mouse_y_);
+        // particle_manager_.AddParticle(d_physics_coords.first, d_physics_coords.second, 0.0, 0.0, 0.0, -GRAVITY, particle_manager_.GetParticleCount());
+
+        for(int i = 0; i < 10; i++) {
+            particle_manager_.AddParticle(d_physics_coords.first - 10.0 + i * 2.0, d_physics_coords.second, 0.0, 0.0, 0.0, -GRAVITY, particle_manager_.GetParticleCount());
+        }
+        d_last_gen_time_ = current_time;
+    }
 }
 
 // 마우스 버튼 콜백 함수
@@ -68,12 +81,7 @@ void MouseButtonCallback(GLFWwindow* p_window, int button, int action, int mods)
             d_mouse_x_ = xpos;
             d_mouse_y_ = ypos;
 
-            double current_time = ros::Time::now().toSec();
-            if (current_time - d_last_gen_time_ > MIN_GEN_DT) {
-                std::pair<double, double> d_physics_coords = WindowToPhysicsCoords(d_mouse_x_, d_mouse_y_);
-                particle_manager_.AddParticle(d_physics_coords.first, d_physics_coords.second, 0.0, 0.0, 0.0, -GRAVITY, particle_manager_.GetParticleCount());
-                d_last_gen_time_ = current_time;
-            }
+            AddParticleMouse();
 
         } else if (action == GLFW_RELEASE) {
             b_mouse_pressed_ = false;
@@ -87,19 +95,14 @@ void CursorPositionCallback(GLFWwindow* p_window, double xpos, double ypos) {
         d_mouse_x_ = xpos;
         d_mouse_y_ = ypos;
 
-        double current_time = ros::Time::now().toSec();
-        if (current_time - d_last_gen_time_ > MIN_GEN_DT) {
-            std::pair<double, double> d_physics_coords = WindowToPhysicsCoords(d_mouse_x_, d_mouse_y_);
-            particle_manager_.AddParticle(d_physics_coords.first, d_physics_coords.second, 0.0, 0.0, 0.0, -GRAVITY, particle_manager_.GetParticleCount());
-            d_last_gen_time_ = current_time;
-        }
+        AddParticleMouse();
     }
 }
 
 // 원 그리기 함수
-void DrawCircle(double x, double y, double radius) {
-    int i_segments = 10;
-    glColor3f(1.0f, 1.0f, 1.0f);
+void DrawCircle(double x, double y, double radius, float r = 1.0, float g = 1.0, float b = 1.0) {
+    int i_segments = 6;
+    glColor3f(r, g, b);
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(x, y);
     for (int i = 0; i <= i_segments; i++) {
@@ -108,8 +111,7 @@ void DrawCircle(double x, double y, double radius) {
         double dy = radius * sin(angle);
         glVertex2f(x + dx, y + dy);
     }
-    glEnd();
-    
+    glEnd(); 
 }
 
 // Function to render text on the screen
@@ -192,13 +194,26 @@ int main(int argc, char** argv) {
         auto update_duration = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(update_end_time - update_start_time).count();
 
         auto draw_start_time = std::chrono::high_resolution_clock::now();
-        // Get particle positions and draw them
-        auto positions = particle_manager_.GetParticlePositions();
-        for (const auto& pos : positions) {
-            auto [d_physics_x, d_physics_y] = pos;
-            auto [d_window_x, d_window_y] = PhysicsToWindowCoords(d_physics_x, d_physics_y);
+
+        auto particles = particle_manager_.GetParticles();
+        for (const auto& particle : particles) {
+            auto [d_window_x, d_window_y] = PhysicsToWindowCoords(particle.pos.x(), particle.pos.y());
             auto [d_opengl_x, d_opengl_y] = WindowToOpenGLCoords(d_window_x, d_window_y);
-            DrawCircle(d_opengl_x, d_opengl_y, PARTICLE_RADIUS/d_window_width_ * 2.0); // Draw each particle as a small circle
+            // Calculate color based on velocity
+            float f_r = 0.0f, f_g = 0.0f, f_b = 1.0f; // Default to blue
+            double d_velocity = particle.vel.norm(); // Assuming velocity is a vector with a norm() method
+
+            if (d_velocity >= 200.0) {
+                f_r = 1.0f; // Red
+                f_g = 0.0f;
+                f_b = 0.0f;
+            } else if (d_velocity > 0.0) {
+                // Interpolate between blue and red based on velocity
+                f_r = static_cast<float>(d_velocity / 200.0);
+                f_b = 1.0f - f_r;
+            }
+
+            DrawCircle(d_opengl_x, d_opengl_y, PARTICLE_RADIUS/d_window_width_ * 2.0, f_r, f_g, f_b); // Draw each particle with color based on velocity
         }
 
         auto draw_end_time = std::chrono::high_resolution_clock::now();
@@ -207,6 +222,7 @@ int main(int argc, char** argv) {
         // Get the total number of particles
         int i_particle_count = particle_manager_.GetParticleCount(); // Assuming this method exists
 
+        glColor3f(1.0f, 1.0f, 1.0f);
         // Render the particle count on the window
         std::string particle_count_text = "Particle Count: " + std::to_string(i_particle_count);
         RenderText(-0.9f, 0.95f, particle_count_text); // Position the text slightly above the duration text

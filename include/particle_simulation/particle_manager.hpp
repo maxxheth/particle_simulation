@@ -5,7 +5,8 @@
 #include <vector>
 #include <utility>
 
-#define DAMPING_FACTOR 0.9
+#define DAMPING_FACTOR 0.8
+
 class ParticleManager {
 public:
     void SetBounds(double d_min_x, double d_max_x, double d_min_y, double d_max_y);
@@ -14,6 +15,7 @@ public:
 
     // Get all particle positions
     std::vector<std::pair<double, double>> GetParticlePositions() const;
+    std::vector<Particle> GetParticles() const;
 
     int GetParticleCount() const;
 

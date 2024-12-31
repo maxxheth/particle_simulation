@@ -36,7 +36,7 @@ void ParticleManager::AssignParticlesToGrid() {
     // Assign particles to grid
     for (int i = 0; i < particles_.size(); ++i) {
         const auto& p = particles_[i];
-        auto [grid_x, grid_y] = GetGridIndex(p.x(), p.y());
+        auto [grid_x, grid_y] = GetGridIndex(p.pos.x(), p.pos.y());
         if (grid_x >= 0 && grid_x < grid_width_ && grid_y >= 0 && grid_y < grid_height_) {
             grid_[grid_y][grid_x].push_back(i);
         }
@@ -49,7 +49,7 @@ void ParticleManager::UpdateParticles(double d_time_step) {
     for (auto& p1 : particles_) {
         p1.Update(d_time_step);
 
-        auto [grid_x, grid_y] = GetGridIndex(p1.x(), p1.y());
+        auto [grid_x, grid_y] = GetGridIndex(p1.pos.x(), p1.pos.y());
 
         // Check this cell and adjacent cells
         for (int dy = -1; dy <= 1; ++dy) {
@@ -64,8 +64,8 @@ void ParticleManager::UpdateParticles(double d_time_step) {
                         // Skip self
                         if (p1.id() == p2.id()) continue;
 
-                        double dx = p2.x() - p1.x();
-                        double dy = p2.y() - p1.y();
+                        double dx = p2.pos.x() - p1.pos.x();
+                        double dy = p2.pos.y() - p1.pos.y();
                         double distance = std::sqrt(dx * dx + dy * dy);
                         double min_distance = PARTICLE_RADIUS * 2.0;
 
@@ -73,54 +73,48 @@ void ParticleManager::UpdateParticles(double d_time_step) {
                             // Handle collision response
                             double nx = dx / distance;
                             double ny = dy / distance;
-                            double relative_velocity = (p2.vx() - p1.vx()) * nx + 
-                                                        (p2.vy() - p1.vy()) * ny;
+                            double relative_velocity = (p2.vel.x() - p1.vel.x()) * nx + 
+                                                        (p2.vel.y() - p1.vel.y()) * ny;
 
                             if (relative_velocity < 0) {
-                                double impulse = 2 * relative_velocity / (1 + 1);  // Assuming equal mass
-                                p1.SetVelocity(p1.vx() + impulse * nx,
-                                               p1.vy() + impulse * ny);
-                                p2.SetVelocity(p2.vx() - impulse * nx,  
-                                               p2.vy() - impulse * ny);
+                                double impulse = 2 * relative_velocity / (1 + 1) ;  // Assuming equal mass
+
+                                p1.vel = Eigen::Vector2f(p1.vel.x() + impulse * nx,
+                                                           p1.vel.y() + impulse * ny);
+                                p2.vel = Eigen::Vector2f(p2.vel.x() - impulse * nx,
+                                                           p2.vel.y() - impulse * ny);
                             }
 
                             // Adjust positions to prevent overlap
                             double overlap = min_distance - distance;
                             double correction_factor = 0.5; // Adjust this factor as needed
-                            p1.SetPosition(p1.x() - overlap * nx * correction_factor,
-                                           p1.y() - overlap * ny * correction_factor);
-                            p2.SetPosition(p2.x() + overlap * nx * correction_factor,
-                                           p2.y() + overlap * ny * correction_factor);
+
+                            p1.pos = Eigen::Vector2f(p1.pos.x() - overlap * nx * correction_factor,
+                                                       p1.pos.y() - overlap * ny * correction_factor);
+                            p2.pos = Eigen::Vector2f(p2.pos.x() + overlap * nx * correction_factor,
+                                                       p2.pos.y() + overlap * ny * correction_factor);
                         }
                     }
                 }
             }
         }
-
-        // Get the updated position
-        double d_position_x, d_position_y;
-        p1.GetPosition(d_position_x, d_position_y);
-
         // Check for boundary collision and reverse velocity if needed
-        if (d_position_x < d_min_x_ + PARTICLE_RADIUS) {
-            d_position_x = d_min_x_ + PARTICLE_RADIUS;
-            p1.SetVelocity(-p1.vx() * DAMPING_FACTOR, p1.vy());
+        if (p1.pos.x() < d_min_x_ + PARTICLE_RADIUS) {
+            p1.pos.x() = d_min_x_ + PARTICLE_RADIUS;
+            p1.vel.x() = -p1.vel.x() * DAMPING_FACTOR;
         }
-        if (d_position_x > d_max_x_ - PARTICLE_RADIUS) {
-            d_position_x = d_max_x_ - PARTICLE_RADIUS;
-            p1.SetVelocity(-p1.vx() * DAMPING_FACTOR, p1.vy());
+        if (p1.pos.x() > d_max_x_ - PARTICLE_RADIUS) {
+            p1.pos.x() = d_max_x_ - PARTICLE_RADIUS;
+            p1.vel.x() = -p1.vel.x() * DAMPING_FACTOR;
         }
-        if (d_position_y < d_min_y_ + PARTICLE_RADIUS) {
-            d_position_y = d_min_y_ + PARTICLE_RADIUS;
-            p1.SetVelocity(p1.vx(), -p1.vy() * DAMPING_FACTOR);
+        if (p1.pos.y() < d_min_y_ + PARTICLE_RADIUS) {
+            p1.pos.y() = d_min_y_ + PARTICLE_RADIUS;
+            p1.vel.y() = -p1.vel.y() * DAMPING_FACTOR;
         }
-        if (d_position_y > d_max_y_ - PARTICLE_RADIUS) {
-            d_position_y = d_max_y_ - PARTICLE_RADIUS;
-            p1.SetVelocity(p1.vx(), -p1.vy() * DAMPING_FACTOR);
+        if (p1.pos.y() > d_max_y_ - PARTICLE_RADIUS) {
+            p1.pos.y() = d_max_y_ - PARTICLE_RADIUS;
+            p1.vel.y() = -p1.vel.y() * DAMPING_FACTOR;
         }
-
-        // Update the particle's position if it was out of bounds
-        p1.SetPosition(d_position_x, d_position_y);
     }
 }
 
@@ -128,11 +122,13 @@ void ParticleManager::UpdateParticles(double d_time_step) {
 std::vector<std::pair<double, double>> ParticleManager::GetParticlePositions() const {
     std::vector<std::pair<double, double>> positions;
     for (const auto& particle : particles_) {
-        double d_x, d_y;
-        particle.GetPosition(d_x, d_y);
-        positions.emplace_back(d_x, d_y);
+        positions.emplace_back(particle.pos.x(), particle.pos.y());
     }
     return positions;
+}
+
+std::vector<Particle> ParticleManager::GetParticles() const {
+    return particles_;
 }
 
 int ParticleManager::GetParticleCount() const {
