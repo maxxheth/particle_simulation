@@ -77,7 +77,8 @@ void ParticleManager::UpdateParticles(double d_time_step) {
                                                         (p2.vel.y() - p1.vel.y()) * ny;
 
                             if (relative_velocity < 0) {
-                                double impulse = 2 * relative_velocity / (1 + 1) ;  // Assuming equal mass
+                                double restitution_coefficient = 0.95; // Adjust this value for desired inelasticity
+                                double impulse = (1 + restitution_coefficient) * relative_velocity / (1 + 1);  // Assuming equal mass
 
                                 p1.vel = Eigen::Vector2f(p1.vel.x() + impulse * nx,
                                                            p1.vel.y() + impulse * ny);
@@ -93,6 +94,7 @@ void ParticleManager::UpdateParticles(double d_time_step) {
                                                        p1.pos.y() - overlap * ny * correction_factor);
                             p2.pos = Eigen::Vector2f(p2.pos.x() + overlap * nx * correction_factor,
                                                        p2.pos.y() + overlap * ny * correction_factor);
+                            
                         }
                     }
                 }

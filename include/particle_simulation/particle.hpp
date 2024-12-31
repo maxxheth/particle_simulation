@@ -6,7 +6,7 @@
 #include <Eigen/Dense>
 
 #define GRAVITY 30
-#define PARTICLE_RADIUS 1.0
+#define PARTICLE_RADIUS 2
 
 class Particle {
 public:

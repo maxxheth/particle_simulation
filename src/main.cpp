@@ -17,8 +17,8 @@ bool b_mouse_pressed_ = false;
 double d_mouse_x_ = 0.0;
 double d_mouse_y_ = 0.0;
 
-double d_window_width_ = 800.0;
-double d_window_height_ = 800.0;
+double d_window_width_ = 600.0;
+double d_window_height_ = 600.0;
 
 double d_last_gen_time_ = 0.0;
 
@@ -225,14 +225,14 @@ int main(int argc, char** argv) {
         glColor3f(1.0f, 1.0f, 1.0f);
         // Render the particle count on the window
         std::string particle_count_text = "Particle Count: " + std::to_string(i_particle_count);
-        RenderText(-0.9f, 0.95f, particle_count_text); // Position the text slightly above the duration text
+        RenderText(-0.9f, 0.90f, particle_count_text); // Position the text slightly above the duration text
         
         // Render the duration on the window
         std::string duration_text = "UpdateParticles took " + std::to_string(update_duration) + " ms";
-        RenderText(-0.9f, 0.9f, duration_text); // Position the text at the top-left corner
+        RenderText(-0.9f, 0.85f, duration_text); // Position the text at the top-left corner
 
         std::string draw_duration_text = "DrawParticles took " + std::to_string(draw_duration) + " ms";
-        RenderText(-0.9f, 0.85f, draw_duration_text); // Position the text at the top-left corner
+        RenderText(-0.9f, 0.80f, draw_duration_text); // Position the text at the top-left corner
 
         // Swap the front and back buffers to display the rendered image
         glfwSwapBuffers(p_window);
