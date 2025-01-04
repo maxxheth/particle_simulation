@@ -28,6 +28,9 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return;
 
+        let wildcard = 0.01;
+        const increment = 0.01;
+
         const animate = () => {
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
@@ -37,7 +40,10 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
             ctx.fillRect(0, 0, width, height);
 
             // Update particles
-            particleManager.updateParticles(FRAME_DT);
+            wildcard += increment;
+
+            const frameDt = FRAME_DT * wildcard;
+            particleManager.updateParticles(frameDt);
 
             // Draw particles
             particleManager.getParticles().forEach(particle => {
@@ -48,7 +54,7 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
                     r = 1;
                     b = 0;
                 } else if (velocity > 0.0) {
-                    r = velocity / 200.0;
+                    r = velocity / 200.0 * wildcard;
                     b = 1 - r;
                 }
 
