@@ -55,7 +55,27 @@ export class ParticleManager {
         });
     }
 
+    private removeOldParticles(maxAgeMs: number = 60000): void {
+        const now = performance.now();
+        const initialCount = this.particles.length;
+        
+        // Filter out old particles
+        this.particles = this.particles.filter(particle => {
+            return now - particle.createdAt < maxAgeMs;
+        });
+
+        // If particles were removed, reassign IDs to maintain consecutive numbering
+        if (this.particles.length < initialCount) {
+            this.particles.forEach((particle, index) => {
+                particle.setId(index);
+            });
+        }
+    }
+
     updateParticles(timeStep: number): void {
+        // Remove particles older than 1 minute
+        this.removeOldParticles();
+        
         this.assignParticlesToGrid();
 
         this.particles.forEach((p1, i) => {

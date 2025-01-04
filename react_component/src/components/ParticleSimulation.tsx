@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ParticleManager } from './ParticleManager';
-import { GRAVITY, PARTICLE_RADIUS } from './Particle';
+import { GRAVITY, PARTICLE_RADIUS, FRAME_DT } from './Particle';
 
 interface ParticleSimulationProps {
     width?: number;
@@ -16,10 +16,8 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
     const particleManagerRef = useRef<ParticleManager>(new ParticleManager());
     const lastGenTimeRef = useRef<number>(0);
     const [isMousePressed, setIsMousePressed] = useState(false);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
     const MIN_GEN_DT = 0.01;
-    const FRAME_DT = 0.01;
 
     useEffect(() => {
         const particleManager = particleManagerRef.current;
@@ -27,9 +25,6 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
 
         const canvas = canvasRef.current;
         if (!canvas) return;
-
-        let wildcard = 0.01;
-        const increment = 0.01;
 
         const animate = () => {
             const ctx = canvas.getContext('2d');
@@ -39,35 +34,36 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
             ctx.fillStyle = 'black';
             ctx.fillRect(0, 0, width, height);
 
-            // Update particles
-            wildcard += increment;
-
-            const frameDt = FRAME_DT * wildcard;
-            particleManager.updateParticles(frameDt);
-
-            // Draw particles
+            // Update and draw particles
+            particleManager.updateParticles(FRAME_DT);
+            
             particleManager.getParticles().forEach(particle => {
                 const velocity = particle.vel.norm();
-                let r = 0, g = 0, b = 1; // Default to blue
+                let r = 0, g = 0, b = 1;
 
                 if (velocity >= 200.0) {
                     r = 1;
                     b = 0;
                 } else if (velocity > 0.0) {
-                    r = velocity / 200.0 * wildcard;
+                    r = velocity / 200.0;
                     b = 1 - r;
                 }
 
+                // Calculate opacity based on age
+                const age = performance.now() - particle.createdAt;
+                const maxAge = 60000;
+                const opacity = Math.max(0.2, 1 - (age / maxAge));
+
                 ctx.beginPath();
-                ctx.fillStyle = `rgb(${r * 255}, ${g * 255}, ${b * 255})`;
-                ctx.arc(particle.pos.x, height - particle.pos.y, PARTICLE_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${opacity})`;
+                ctx.arc(particle.pos.x, particle.pos.y, PARTICLE_RADIUS, 0, Math.PI * 2);
                 ctx.fill();
             });
 
-            // Draw particle count
+            // Draw stats
             ctx.fillStyle = 'white';
             ctx.font = '18px Helvetica';
-            ctx.fillText(`Particle Count: ${particleManager.getParticleCount()}`, 10, 30);
+            ctx.fillText(`Particles: ${particleManager.getParticleCount()}`, 10, 30);
 
             requestIdRef.current = requestAnimationFrame(animate);
         };
@@ -84,15 +80,14 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
     const addParticles = (x: number, y: number) => {
         const currentTime = performance.now() / 1000;
         if (currentTime - lastGenTimeRef.current > MIN_GEN_DT) {
-            const physicsY = height - y;
             for (let i = 0; i < 10; i++) {
                 particleManagerRef.current.addParticle(
                     x - 10.0 + i * 2.0,
-                    physicsY,
-                    0.0,
-                    0.0,
-                    0.0,
-                    -GRAVITY,
+                    y,
+                    0,
+                    0,
+                    0,
+                    GRAVITY,
                     particleManagerRef.current.getParticleCount()
                 );
             }
@@ -106,7 +101,6 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
         if (rect) {
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            setMousePos({ x, y });
             addParticles(x, y);
         }
     };
@@ -117,7 +111,6 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
             if (rect) {
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-                setMousePos({ x, y });
                 addParticles(x, y);
             }
         }
@@ -132,7 +125,10 @@ export const ParticleSimulation: React.FC<ParticleSimulationProps> = ({
             ref={canvasRef}
             width={width}
             height={height}
-            style={{ border: '1px solid #000' }}
+            style={{ 
+                border: '1px solid #000',
+                background: '#1a1a1a'
+            }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
